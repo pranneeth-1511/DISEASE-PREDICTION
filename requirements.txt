@@ -1,7 +1,7 @@
-streamlit
-tensorflow
-numpy
-pandas
-pillow
-pytesseract
-scikit-learn
+streamlit 
+tensorflow 
+numpy 
+pandas 
+pillow 
+pytesseract 
+scikit-learn 
