@@ -11,8 +11,8 @@ from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, Flatten, Dense,
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping
  
-original_dir = r"C:\Local Storage\Multi Cancer" 
-reduced_dir = r"C:\Local Storage\Multi Cancer_Reduced"
+original_dir = r"C:\Users\prann\Downloads\Multi Cancer\Multi Cancer" 
+reduced_dir = r"C:\Users\prann\Downloads\Multi Cancer\Multi Cancer\Multi Cancer_Reduced"
 
 os.makedirs(reduced_dir, exist_ok=True)
 

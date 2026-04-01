@@ -5,3 +5,6 @@ pandas
 pillow 
 pytesseract 
 scikit-learn 
+tqdm 
+firebase-admin
+requests

@@ -10,7 +10,7 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Embedding, LSTM, Dense, Dropout
  
-CSV_PATH = r"G:\My Drive\VS Code\capstone-project\clinical_notes_with_symptoms.csv"
+CSV_PATH = r"C:\Users\prann\Downloads\Multi Cancer\clinical_notes_with_symptoms.csv"
 
 if not os.path.exists(CSV_PATH):
     print(f"❌ Error: CSV file not found at {CSV_PATH}")
