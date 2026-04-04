@@ -7,6 +7,8 @@ from appwrite.id import ID
 from appwrite.query import Query
 from appwrite.input_file import InputFile
 from datetime import datetime
+import hmac
+import hashlib
 
 # Load Config
 ENDPOINT = st.secrets["APPWRITE_ENDPOINT"]
@@ -31,6 +33,24 @@ def get_auth_client():
     return client
 
 # Authentication Methods
+def sign_in_with_email(email, password):
+    client = get_auth_client()
+    account = Account(client)
+    try:
+        session = account.create_email_password_session(email=email, password=password)
+        profile = ensure_user_profile(session.userid, email)
+        signature = generate_session_signature(session.userid)
+        
+        return {
+            "localId": session.userid, 
+            "email": email, 
+            "stoken": signature, # Secure Token
+            "role": profile.get('role', 'user')
+        }
+    except Exception as e:
+        print(f"Login Error Detail: {e}")
+        return {"error": {"message": str(e)}}
+
 def sign_up_with_email(email, password):
     client = get_auth_client()
     account = Account(client)
@@ -38,39 +58,81 @@ def sign_up_with_email(email, password):
         user = account.create(user_id=ID.unique(), email=email, password=password)
         session = account.create_email_password_session(email=email, password=password)
         
-        # Check if first user
-        databases = Databases(get_server_client())
-        existing = databases.list_documents(DB_ID, 'profiles', queries=[Query.limit(1)])
-        role = 'admin' if len(existing.documents) == 0 else 'user'
+        profile = ensure_user_profile(session.userid, email)
+        signature = generate_session_signature(session.userid)
+        
+        return {
+            "localId": session.userid, 
+            "email": email, 
+            "stoken": signature,
+            "role": profile.get('role', 'user')
+        }
+    except Exception as e:
+        print(f"Signup Error Detail: {e}")
+        return {"error": {"message": str(e)}}
+
+def ensure_user_profile(user_id, email):
+    """
+    Checks if a user profile exists. If not, creates one.
+    Automatically assigns 'admin' role to the first user in the system.
+    """
+    databases = Databases(get_server_client())
+    try:
+        # 1. Check for existing profile
+        profiles = databases.list_documents(DB_ID, 'profiles', queries=[Query.equal('userid', user_id)])
+        if len(profiles.documents) > 0:
+            d = profiles.documents[0].to_dict()
+            if 'data' in d and isinstance(d['data'], dict): d.update(d['data'])
+            return {"userid": user_id, "email": d.get('email', ''), "role": d.get('role', 'user')}
+        
+        # 2. If not found, create it
+        # Count all profiles to determine if this is the first user
+        total_profiles = databases.list_documents(DB_ID, 'profiles', queries=[Query.limit(1)])
+        role = 'admin' if total_profiles.total == 0 else 'user'
         
         databases.create_document(DB_ID, 'profiles', ID.unique(), {
-            'userid': session.userid,
+            'userid': user_id,
             'email': email,
             'role': role
         })
         
-        return {"localId": session.userid, "email": email, "idToken": session.id, "role": role}
+        return {"userid": user_id, "email": email, "role": role}
     except Exception as e:
-        return {"error": {"message": str(e)}}
+        print(f"Profile Provisioning Error: {e}")
+        return {"userid": user_id, "email": email, "role": "user"}
 
-def sign_in_with_email(email, password):
-    client = get_auth_client()
-    account = Account(client)
+def generate_session_signature(user_id):
+    """
+    Generates a cryptographically secure HMAC signature for the user ID 
+    using the APPWRITE_API_KEY as the secret.
+    """
+    return hmac.new(API_KEY.encode(), user_id.encode(), hashlib.sha256).hexdigest()
+
+def verify_session_signature(user_id, signature):
+    """
+    Verifies that the provided signature matches the user_id.
+    """
+    if not user_id or not signature:
+        return False
+    expected = generate_session_signature(user_id)
+    return hmac.compare_digest(expected, signature)
+
+def verify_session_jwt(jwt_token):
+    # Keeping the signature for compatibility but it's no longer used
+    return {"valid": False}
+
+def get_user_profile(user_id):
+    """Fetch user profile metadata securely from the profiles database."""
+    databases = Databases(get_server_client())
     try:
-        session = account.create_email_password_session(email=email, password=password)
-        
-        databases = Databases(get_server_client())
-        profiles = databases.list_documents(DB_ID, 'profiles', queries=[Query.equal('userid', session.userid)])
-        
-        role = 'user'
+        profiles = databases.list_documents(DB_ID, 'profiles', queries=[Query.equal('userid', user_id)])
         if len(profiles.documents) > 0:
             d = profiles.documents[0].to_dict()
             if 'data' in d and isinstance(d['data'], dict): d.update(d['data'])
-            role = d.get('role', 'user')
-            
-        return {"localId": session.userid, "email": email, "idToken": session.id, "role": role}
-    except Exception as e:
-        return {"error": {"message": str(e)}}
+            return {"userid": user_id, "email": d.get('email', ''), "role": d.get('role', 'user')}
+    except:
+        pass
+    return {"userid": user_id, "email": "", "role": "user"}
 
 # Admin User Management
 def get_all_users():

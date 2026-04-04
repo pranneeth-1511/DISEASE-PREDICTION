@@ -9,6 +9,12 @@ import pickle
 import os
 import appwrite_utils as aw
 from io import BytesIO
+from pages_ui.auth_page import show_auth_page
+from pages_ui.cancer_detection import show_cancer_detection
+from pages_ui.symptom_analysis import show_symptom_analysis
+from pages_ui.diagnosis_history import show_diagnosis_history
+from pages_ui.patient_history import show_patient_history
+from pages_ui.user_management import show_user_management
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
@@ -17,77 +23,125 @@ st.set_page_config(page_title="MediScan AI", layout="wide", page_icon="🏥")
 # --- Custom CSS Injection ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;700&display=swap');
     
+    :root {
+        --primary: #0068C9;
+        --secondary: #00A699;
+        --accent: #FF4B4B;
+        --bg-main: #F8FAFC;
+        --card-bg: #FFFFFF;
+        --text-main: #1E293B;
+        --text-muted: #64748B;
+        --border: #E2E8F0;
+    }
+
     /* Global Styles */
     .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
+        padding-top: 1.5rem !important;
+        padding-bottom: 3rem !important;
         font-family: 'Inter', sans-serif;
+        background-color: var(--bg-main);
+        overflow: auto !important;
     }
     
-    /* Hero Title */
+    .stApp {
+        overflow: auto !important;
+        height: auto !important;
+    }
+    
+    /* Hide Streamlit elements gracefully */
+    header[data-testid="stHeader"], footer {
+        visibility: hidden !important;
+        display: none !important;
+    }
+    
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* Hero Title & Sidebar Style */
     .hero-title {
+        font-family: 'Outfit', sans-serif;
         font-weight: 800;
-        font-size: 3rem;
-        text-align: center;
-        background: -webkit-linear-gradient(45deg, #0068C9, #00A699);
+        font-size: 2rem;
+        background: linear-gradient(135deg, #0068C9 0%, #00A699 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        margin-bottom: 0px;
-        padding-bottom: 4px;
+        margin-bottom: 0.5rem;
+        text-align: center;
+        letter-spacing: -0.02em;
     }
     .hero-subtitle {
         text-align: center;
-        color: #6C757D;
-        font-size: 1.2rem;
-        margin-bottom: 2rem;
-        font-weight: 400;
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        margin-bottom: 1.5rem;
+        font-weight: 500;
     }
     
-    /* Cards */
+    /* Modern Dashboard Cards */
     .card {
-        background-color: #FFFFFF;
-        border-radius: 12px;
+        background-color: var(--card-bg);
+        border-radius: 16px;
         padding: 24px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        border: 1px solid #E9ECEF;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        border: 1px solid var(--border);
         margin-bottom: 1rem;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
     .card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(0,0,0,0.08);
-    }
-    .card h2, .card h3 {
-        margin-top: 0;
-        color: #212529;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     }
     
-    /* Hide Streamlit elements */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    
-    /* Button Polish */
-    .stButton > button {
-        border-radius: 8px;
-        font-weight: 600;
-        transition: all 0.3s;
-    }
-    .stButton > button:hover {
-        transform: scale(1.02);
-    }
-    
-    /* Status Badge */
+    /* Status Badges */
     .badge {
-        padding: 4px 10px;
-        border-radius: 12px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+        display: inline-flex;
+        align-items: center;
     }
-    .badge-primary { background: #E7F1FF; color: #0068C9; }
+    .badge-primary { background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; }
+    .badge-success { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+    .badge-warning { background: #FFFBEB; color: #D97706; border: 1px solid #FEF3C7; }
+
+    /* Login Image Container */
+    .login-image-container {
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        height: 60vh;
+        border: 4px solid white;
+    }
+    .login-image-container img {
+        object-fit: cover;
+        width: 100%;
+        height: 100%;
+    }
+
+    /* Style Streamlit Buttons to match Premium Look */
+    .stButton>button {
+        border-radius: 12px !important;
+        border: none !important;
+        font-weight: 600 !important;
+        padding: 0.6rem 1.5rem !important;
+        transition: all 0.2s !important;
+        background: linear-gradient(135deg, #0068C9 0%, #004F9E 100%) !important;
+        color: white !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+    }
+    .stButton>button:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+        opacity: 0.95;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -96,14 +150,53 @@ if 'user' not in st.session_state:
     st.session_state.user = None
 
 # --- Firebase Auth UI ---
+# --- Session Restoration Logic (Secure HMAC Guard) ---
+if not st.session_state.user:
+    params = st.query_params
+    if 'userid' in params and 'stoken' in params:
+        with st.spinner("🛡️ Verifying secure medical gateway..."):
+            is_valid = aw.verify_session_signature(params['userid'], params['stoken'])
+            if is_valid:
+                 profile = aw.ensure_user_profile(params['userid'], "")
+                 if profile.get('userid'):
+                     st.session_state.user = {
+                         "localId": profile['userid'],
+                         "email": profile['email'],
+                         "role": profile['role'],
+                         "stoken": params['stoken']
+                     }
+                     st.rerun()
+            else:
+                 # Block access and clean up
+                 st.query_params.clear()
+                 st.error("🔒 Security Alert: Invalid or tampered session token. Access denied.")
+                 st.stop() 
+
 def auth_sidebar():
-    st.sidebar.title("👤 Patient Portal")
+    st.sidebar.markdown('<div style="text-align: center; margin-top: -1rem; padding-bottom: 1rem;">', unsafe_allow_html=True)
+    st.sidebar.markdown("### 🏥 MediScan AI Portal")
+    st.sidebar.markdown('</div>', unsafe_allow_html=True)
+
     if st.session_state.user:
         role_label = "👑 ADMIN" if st.session_state.user.get('role') == 'admin' else "USER"
-        st.sidebar.success(f"Logged in as: {st.session_state.user['email']} ({role_label})")
-        if st.sidebar.button("Logout"):
+        
+        # User Profile Card in Sidebar
+        st.sidebar.markdown(f"""
+        <div class="card" style="padding: 12px; border-left: 4px solid var(--primary);">
+            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Logged in as</div>
+            <div style="font-weight: 700; font-size: 0.85rem; color: var(--text-main); margin-bottom: 4px;">{st.session_state.user['email']}</div>
+            <span class="badge badge-primary">{role_label}</span>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.sidebar.markdown('<div style="height: 1rem;"></div>', unsafe_allow_html=True)
+        
+        if st.sidebar.button("🔌 Signout", use_container_width=True, help="Securely end your healthcare session."):
             st.session_state.user = None
+            st.query_params.clear()
             st.rerun()
+    else:
+        st.sidebar.info("Please log in to the diagnostic portal to proceed.")
 
 auth_sidebar()
 
@@ -139,64 +232,11 @@ def load_resources():
 
 res = load_resources()
 
-def predict_cancer(image):
-    """Predicts cancer type from image using CNN"""
-    img = image.resize((128, 128))
-    img_array = img_to_array(img) / 255.0
-    img_array = np.expand_dims(img_array, axis=0)
-    
-    # Check if model exists
-    if res['cnn_model']:
-        prediction = res['cnn_model'].predict(img_array, verbose=0)
-        class_idx = np.argmax(prediction[0])
-        confidence = prediction[0][class_idx]
-        return res['class_names'][class_idx], confidence
-    return "Error", 0.0
-
-def predict_disease_from_text(text_input):
-    """Predicts disease from text symptoms using LSTM"""
-    max_len = 200 
-    sequence = res['tokenizer'].texts_to_sequences([text_input])
-    padded = pad_sequences(sequence, maxlen=max_len, padding='post', truncating='post')
-    
-    if res['lstm_model']:
-        pred = res['lstm_model'].predict(padded, verbose=0)
-        class_idx = np.argmax(pred)
-        disease_name = res['label_encoder'].inverse_transform([class_idx])[0]
-        confidence = np.max(pred)
-        return disease_name, confidence
-    return "Error", 0.0
-
 st.markdown("<h1 class='hero-title'>🏥 MediScan AI</h1>", unsafe_allow_html=True)
 st.markdown("<div class='hero-subtitle'>Advanced Multi-Modal Medical Diagnostics</div>", unsafe_allow_html=True)
 
 if not st.session_state.user:
-    st.markdown('<div style="text-align: center; margin-bottom: 2rem; color: #6C757D;">Please Login or Sign Up to securely access your diagnostic tools.</div>', unsafe_allow_html=True)
-    
-    col1, col2, col3 = st.columns([1,1.5,1])
-    with col2:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        choice = st.radio("Access Portal", ["Login", "Sign Up"], horizontal=True, label_visibility="hidden")
-        email = st.text_input("Email", placeholder="admin@mediscan.ai")
-        password = st.text_input("Password", type="password", placeholder="••••••••")
-        
-        st.write("") # Spacing
-        if choice == "Login":
-            if st.button("Secure Login", use_container_width=True):
-                res = aw.sign_in_with_email(email, password)
-                if 'idToken' in res:
-                    st.session_state.user = res
-                    st.rerun()
-                else:
-                    st.error("Invalid credentials")
-        else:
-            if st.button("Create Account", use_container_width=True):
-                res = aw.sign_up_with_email(email, password)
-                if 'idToken' in res:
-                    st.success("Account created successfully! Please select Login.")
-                else:
-                    st.error(res.get('error', {}).get('message', 'Signup failed'))
-        st.markdown('</div>', unsafe_allow_html=True)
+    show_auth_page()
 else:
     st.markdown(f"**Welcome to the Patient Portal, `{st.session_state.user['email']}`.** Please navigate the tabs below.")
     st.divider()
@@ -208,257 +248,19 @@ else:
         tabs_list.append("👑 User Management")
         
     tabs = st.tabs(tabs_list)
-    tab1, tab2, tab3 = tabs[0], tabs[1], tabs[2]
+    
+    with tabs[0]:
+        show_cancer_detection(res)
 
-    with tab1:
-        st.header("Upload Patient Scans")
-        
-        if res['cnn_model'] is None:
-            st.warning("⚠️ Cancer model not found. Please run 'train_cancer.py' first.")
-        else:
-            uploaded_files = st.file_uploader("Upload Scans (Support for multiple images)", 
-                                              type=['jpg', 'png', 'jpeg'], 
-                                              accept_multiple_files=True)
+    with tabs[1]:
+        show_symptom_analysis(res)
 
-            if uploaded_files:
-                st.divider()
-                predictions = []
-                cols = st.columns(3)
-                
-                for idx, file in enumerate(uploaded_files):
-                    image = Image.open(file).convert('RGB')
-                    with cols[idx % 3]: 
-                        st.image(image, caption=file.name, use_container_width=True)
-                    
-                    pred_class, conf = predict_cancer(image)
-                    predictions.append((pred_class, conf, file))
-
-                if predictions:
-                    vote_counts = {}
-                    for pred, conf, f in predictions:
-                        vote_counts[pred] = vote_counts.get(pred, 0) + 1
-                    
-                    final_prediction = max(vote_counts, key=vote_counts.get)
-                    relevant_confs = [conf for pred, conf, f in predictions if pred == final_prediction]
-                    avg_conf = np.mean(relevant_confs)
-
-                    st.markdown(f"""
-                    <div class="card">
-                        <div style="font-size: 0.9rem; color: #6C757D; text-transform: uppercase; font-weight: bold;">AI Diagnosis Result</div>
-                        <h2 style="color: #0068C9; margin-top: 8px;">🎯 {final_prediction}</h2>
-                        <div style="font-size: 1.1rem; color: #212529;">
-                            <strong>Confidence Score:</strong> <span class="badge badge-primary">{avg_conf*100:.2f}%</span>
-                        </div>
-                        <p style="font-size: 0.9rem; color: #868E96; margin-top: 8px;">Analyzed across {len(predictions)} scans to ensure accuracy.</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    save_key = f"saved_{'_'.join([f.name for f in uploaded_files])}"
-                    if not st.session_state.get(save_key):
-                        with st.spinner("💾 Saving detection results automatically..."):
-                            try:
-                                # Upload first image as reference
-                                uploaded_files[0].seek(0)
-                                img_url, _ = aw.upload_medical_scan(st.session_state.user['localId'], uploaded_files[0], uploaded_files[0].name)
-                                
-                                data = {
-                                    "type": "Cancer Detection",
-                                    "diagnosis": final_prediction,
-                                    "confidence": float(avg_conf),
-                                    "image_url": img_url,
-                                    "scan_count": len(uploaded_files)
-                                }
-                                aw.save_diagnosis(st.session_state.user['localId'], data)
-                                st.session_state[save_key] = True
-                                st.success("✅ Diagnosis saved automatically to history!")
-                            except Exception as e:
-                                st.error(f"Failed to auto-save: {e}")
-
-    with tab2:
-        st.header("Predict Disease from Symptoms/Notes")
-        
-        if res['lstm_model'] is None:
-            st.error("❌ Text model not found. Please run 'train_text.py' to generate the model files.")
-        else:
-            col1, col2 = st.columns([1, 1])
-            extracted_text = ""
-            
-            with col1:
-                st.subheader("Option 1: Upload Note Image")
-                note_image = st.file_uploader("Upload Image", type=['jpg', 'png', 'jpeg'], key="note_uploader")
-                
-                if note_image:
-                    try:
-                        with st.spinner("🔍 Extracting text..."):
-                            img_ocr = Image.open(note_image)
-                            st.image(img_ocr, caption="Uploaded Note", use_container_width=True)
-                            extracted_text = pytesseract.image_to_string(img_ocr)
-                            st.success("Text extracted successfully!")
-                    except Exception as e:
-                        st.error(f"OCR Failed: {e}. (Ensure Tesseract is installed)")
-
-            with col2:
-                st.subheader("Option 2: Review & Predict")
-                user_input = st.text_area("Clinical Notes / Symptoms", 
-                                          value=extracted_text, 
-                                          height=250,
-                                          placeholder="Example: Patient experiencing severe back pain...")
-                
-                if st.button("🔍 Predict Disease"):
-                    if user_input.strip():
-                        try:
-                            disease, conf = predict_disease_from_text(user_input)
-                            st.divider()
-                            st.markdown(f"""
-                            <div class="card">
-                                <div style="font-size: 0.9rem; color: #6C757D; text-transform: uppercase; font-weight: bold;">NLP Analysis Result</div>
-                                <h2 style="color: #00A699; margin-top: 8px;">🩺 {disease}</h2>
-                                <div style="font-size: 1.1rem; color: #212529;">
-                                    <strong>Confidence Score:</strong> <span class="badge badge-primary">{conf*100:.2f}%</span>
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
-                            
-                            # Cache prediction for saving
-                            st.session_state.last_text_pred = {
-                                "diagnosis": disease,
-                                "confidence": float(conf),
-                                "notes": user_input
-                            }
-                        except Exception as e:
-                            st.error(f"Prediction Error: {e}")
-                    else:
-                        st.warning("⚠️ Please enter text or upload an image first.")
-                
-                if 'last_text_pred' in st.session_state:
-                    if st.button("💾 Save to History", key="save_text"):
-                        try:
-                            with st.spinner("Saving to cloud..."):
-                                data = st.session_state.last_text_pred
-                                data['type'] = "Symptom Analysis"
-                                
-                                if note_image:
-                                    note_image.seek(0)
-                                    img_url, _ = aw.upload_medical_scan(st.session_state.user['localId'], note_image, note_image.name)
-                                    data['image_url'] = img_url
-
-                                aw.save_diagnosis(st.session_state.user['localId'], data)
-                                st.success("✅ Saved to history!")
-                                del st.session_state.last_text_pred
-                        except Exception as e:
-                            st.error(f"Save failed: {e}")
-
-    with tab3:
-        st.header("Your Diagnosis History")
-        if st.button("🔄 Refresh History"):
-            st.cache_data.clear()
-        
-        with st.spinner("Fetching your records..."):
-            try:
-                history = aw.get_diagnosis_history(st.session_state.user['localId'])
-                
-                if not history:
-                    st.info("No records found yet. Perform a diagnosis to see it here.")
-                else:
-                    for entry in history:
-                        card_html = f"""
-                        <div class="card" style="margin-bottom: 20px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                                <span style="font-weight: 600; color: #495057;">📅 {entry['timestamp'].strftime('%Y-%m-%d %H:%M')}</span>
-                                <span class="badge badge-primary">{entry['type']}</span>
-                            </div>
-                            <h3 style="color: #0068C9; margin-top: 0; margin-bottom: 10px;">{entry['diagnosis']}</h3>
-                            <div style="color: #495057;">
-                                <strong>Confidence:</strong> <span style="color: #212529; font-weight: bold;">{entry['confidence']*100:.2f}%</span>
-                            </div>
-                        """
-                        if 'notes' in entry:
-                            card_html += f'<div style="margin-top: 10px; padding: 10px; background-color: #F8F9FA; border-radius: 8px; font-size: 0.9rem;"><strong>Notes:</strong> {entry["notes"]}</div>'
-                        if 'scan_count' in entry:
-                            card_html += f'<div style="margin-top: 10px; font-size: 0.9rem;"><strong>Scans Analyzed:</strong> {entry["scan_count"]}</div>'
-                        
-                        card_html += f'<div style="margin-top: 15px; font-size: 0.8rem; color: #CED4DA;">ID: {entry.get("id", "N/A")}</div></div>'
-                        
-                        if 'image_url' in entry:
-                            col_a, col_b = st.columns([1, 2])
-                            with col_a:
-                                st.image(entry['image_url'], use_container_width=True, caption="Reference Scan")
-                            with col_b:
-                                st.markdown(card_html, unsafe_allow_html=True)
-                        else:
-                            st.markdown(card_html, unsafe_allow_html=True)
-            except Exception as e:
-                st.error(f"Error fetching history: {e}")
+    with tabs[2]:
+        show_diagnosis_history()
 
     if is_admin:
         with tabs[3]:
-            st.header("🩺 Patient History")
-            all_users = aw.get_all_users()
-            user_options = {f"{u['email']} (ID: {u['userid']})": u['userid'] for u in all_users if u.get('role', 'user') == 'user'}
-            
-            selected_user_label = st.selectbox("Select Patient to View", list(user_options.keys()))
-            if selected_user_label:
-                selected_userid = user_options[selected_user_label]
-                st.divider()
-                st.subheader(f"Records for {selected_user_label.split(' ')[0]}")
-                
-                with st.spinner("Fetching patient records..."):
-                    try:
-                        p_history = aw.get_diagnosis_history(selected_userid)
-                        if not p_history:
-                            st.info("No records found for this patient.")
-                        else:
-                            for entry in p_history:
-                                card_html = f"""
-                                <div class="card" style="margin-bottom: 20px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                                        <span style="font-weight: 600; color: #495057;">📅 {entry['timestamp'].strftime('%Y-%m-%d %H:%M')}</span>
-                                        <span class="badge badge-primary">{entry['type']}</span>
-                                    </div>
-                                    <h3 style="color: #0068C9; margin-top: 0; margin-bottom: 10px;">{entry['diagnosis']}</h3>
-                                    <div style="color: #495057;">
-                                        <strong>Confidence:</strong> <span style="color: #212529; font-weight: bold;">{entry['confidence']*100:.2f}%</span>
-                                    </div>
-                                """
-                                if 'notes' in entry:
-                                    card_html += f'<div style="margin-top: 10px; padding: 10px; background-color: #F8F9FA; border-radius: 8px; font-size: 0.9rem;"><strong>Notes:</strong> {entry["notes"]}</div>'
-                                if 'scan_count' in entry:
-                                    card_html += f'<div style="margin-top: 10px; font-size: 0.9rem;"><strong>Scans Analyzed:</strong> {entry["scan_count"]}</div>'
-                                card_html += f'<div style="margin-top: 15px; font-size: 0.8rem; color: #CED4DA;">ID: {entry.get("id", "N/A")}</div></div>'
-                                
-                                if 'image_url' in entry:
-                                    col_a, col_b = st.columns([1, 2])
-                                    with col_a:
-                                        st.image(entry['image_url'], use_container_width=True, caption="Reference Scan")
-                                    with col_b:
-                                        st.markdown(card_html, unsafe_allow_html=True)
-                                        if st.button("🗑️ Delete Record", key=f"del_{entry['id']}", type="primary"):
-                                            aw.delete_diagnosis(entry['id'])
-                                            st.rerun()
-                                else:
-                                    st.markdown(card_html, unsafe_allow_html=True)
-                                    if st.button("🗑️ Delete Record", key=f"del_noimg_{entry['id']}", type="primary"):
-                                        aw.delete_diagnosis(entry['id'])
-                                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Error fetching history: {e}")
+            show_patient_history()
 
         with tabs[4]:
-            st.header("👥 Manage Users")
-            st.markdown("Change roles below. Only admins can see this tab.")
-            st.divider()
-            
-            users = aw.get_all_users()
-            for u in users:
-                c1, c2, c3 = st.columns([3, 1.5, 1])
-                with c1:
-                    st.write(f"**{u['email']}**  \n`ID: {u['userid']}`")
-                with c2:
-                    current_role = u.get('role', 'user')
-                    new_role = st.selectbox("Role", ["user", "admin"], index=0 if current_role == 'user' else 1, key=f"role_{u['id']}", label_visibility="collapsed")
-                with c3:
-                    if new_role != current_role:
-                        if st.button("Update", key=f"btn_{u['id']}", use_container_width=True):
-                            aw.update_user_role(u['id'], new_role)
-                            st.success("Updated!")
-                st.divider()
+            show_user_management()
