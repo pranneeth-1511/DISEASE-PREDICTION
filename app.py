@@ -7,48 +7,105 @@ from PIL import Image
 import pytesseract
 import pickle
 import os
-import firebase_utils as fb
+import appwrite_utils as aw
 from io import BytesIO
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 st.set_page_config(page_title="MediScan AI", layout="wide", page_icon="🏥")
 
+# --- Custom CSS Injection ---
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+    
+    /* Global Styles */
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    /* Hero Title */
+    .hero-title {
+        font-weight: 800;
+        font-size: 3rem;
+        text-align: center;
+        background: -webkit-linear-gradient(45deg, #0068C9, #00A699);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0px;
+        padding-bottom: 4px;
+    }
+    .hero-subtitle {
+        text-align: center;
+        color: #6C757D;
+        font-size: 1.2rem;
+        margin-bottom: 2rem;
+        font-weight: 400;
+    }
+    
+    /* Cards */
+    .card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        border: 1px solid #E9ECEF;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        margin-bottom: 1rem;
+    }
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+    }
+    .card h2, .card h3 {
+        margin-top: 0;
+        color: #212529;
+    }
+    
+    /* Hide Streamlit elements */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* Button Polish */
+    .stButton > button {
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    .stButton > button:hover {
+        transform: scale(1.02);
+    }
+    
+    /* Status Badge */
+    .badge {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .badge-primary { background: #E7F1FF; color: #0068C9; }
+</style>
+""", unsafe_allow_html=True)
+
 # --- Session State Management ---
 if 'user' not in st.session_state:
     st.session_state.user = None
 
 # --- Firebase Auth UI ---
-def auth_ui():
+def auth_sidebar():
     st.sidebar.title("👤 Patient Portal")
-    
     if st.session_state.user:
-        st.sidebar.success(f"Logged in as: {st.session_state.user['email']}")
+        role_label = "👑 ADMIN" if st.session_state.user.get('role') == 'admin' else "USER"
+        st.sidebar.success(f"Logged in as: {st.session_state.user['email']} ({role_label})")
         if st.sidebar.button("Logout"):
             st.session_state.user = None
             st.rerun()
-    else:
-        choice = st.sidebar.selectbox("Login/Signup", ["Login", "Sign Up"])
-        email = st.sidebar.text_input("Email")
-        password = st.sidebar.text_input("Password", type="password")
-        
-        if choice == "Login":
-            if st.sidebar.button("Login"):
-                res = fb.sign_in_with_email(email, password)
-                if 'idToken' in res:
-                    st.session_state.user = res
-                    st.rerun()
-                else:
-                    st.sidebar.error("Invalid credentials")
-        else:
-            if st.sidebar.button("Sign Up"):
-                res = fb.sign_up_with_email(email, password)
-                if 'idToken' in res:
-                    st.sidebar.success("Account created! Please login.")
-                else:
-                    st.sidebar.error(res.get('error', {}).get('message', 'Signup failed'))
 
-auth_ui()
+auth_sidebar()
 
 @st.cache_resource
 def load_resources():
@@ -110,16 +167,48 @@ def predict_disease_from_text(text_input):
         return disease_name, confidence
     return "Error", 0.0
 
-st.title("🏥 MediScan AI: Multi-Modal Diagnosis")
+st.markdown("<h1 class='hero-title'>🏥 MediScan AI</h1>", unsafe_allow_html=True)
+st.markdown("<div class='hero-subtitle'>Advanced Multi-Modal Medical Diagnostics</div>", unsafe_allow_html=True)
 
 if not st.session_state.user:
-    st.info("Please Login or Sign Up from the sidebar to access the AI Diagnostic tools.")
-    st.image("https://img.freepik.com/free-vector/medical-technology-concept_23-2148403362.jpg", use_column_width=True)
-else:
-    st.write(f"Welcome, {st.session_state.user['email']}. Upload scans for analysis.")
+    st.markdown('<div style="text-align: center; margin-bottom: 2rem; color: #6C757D;">Please Login or Sign Up to securely access your diagnostic tools.</div>', unsafe_allow_html=True)
     
-    tabs = ["🧬 Multi-Cancer Detection", "📝 Symptom Analysis", "📂 Diagnosis History"]
-    tab1, tab2, tab3 = st.tabs(tabs)
+    col1, col2, col3 = st.columns([1,1.5,1])
+    with col2:
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        choice = st.radio("Access Portal", ["Login", "Sign Up"], horizontal=True, label_visibility="hidden")
+        email = st.text_input("Email", placeholder="admin@mediscan.ai")
+        password = st.text_input("Password", type="password", placeholder="••••••••")
+        
+        st.write("") # Spacing
+        if choice == "Login":
+            if st.button("Secure Login", use_container_width=True):
+                res = aw.sign_in_with_email(email, password)
+                if 'idToken' in res:
+                    st.session_state.user = res
+                    st.rerun()
+                else:
+                    st.error("Invalid credentials")
+        else:
+            if st.button("Create Account", use_container_width=True):
+                res = aw.sign_up_with_email(email, password)
+                if 'idToken' in res:
+                    st.success("Account created successfully! Please select Login.")
+                else:
+                    st.error(res.get('error', {}).get('message', 'Signup failed'))
+        st.markdown('</div>', unsafe_allow_html=True)
+else:
+    st.markdown(f"**Welcome to the Patient Portal, `{st.session_state.user['email']}`.** Please navigate the tabs below.")
+    st.divider()
+    
+    is_admin = st.session_state.user.get('role') == 'admin'
+    tabs_list = ["🧬 Multi-Cancer Detection", "📝 Symptom Analysis", "📂 Diagnosis History"]
+    if is_admin:
+        tabs_list.append("🩺 Patient History")
+        tabs_list.append("👑 User Management")
+        
+    tabs = st.tabs(tabs_list)
+    tab1, tab2, tab3 = tabs[0], tabs[1], tabs[2]
 
     with tab1:
         st.header("Upload Patient Scans")
@@ -139,7 +228,7 @@ else:
                 for idx, file in enumerate(uploaded_files):
                     image = Image.open(file).convert('RGB')
                     with cols[idx % 3]: 
-                        st.image(image, caption=file.name, use_column_width=True)
+                        st.image(image, caption=file.name, use_container_width=True)
                     
                     pred_class, conf = predict_cancer(image)
                     predictions.append((pred_class, conf, file))
@@ -153,14 +242,24 @@ else:
                     relevant_confs = [conf for pred, conf, f in predictions if pred == final_prediction]
                     avg_conf = np.mean(relevant_confs)
 
-                    st.success(f"## 🎯 Final Diagnosis: {final_prediction}")
-                    st.info(f"Confidence: {avg_conf*100:.2f}% (Based on {len(predictions)} scans)")
+                    st.markdown(f"""
+                    <div class="card">
+                        <div style="font-size: 0.9rem; color: #6C757D; text-transform: uppercase; font-weight: bold;">AI Diagnosis Result</div>
+                        <h2 style="color: #0068C9; margin-top: 8px;">🎯 {final_prediction}</h2>
+                        <div style="font-size: 1.1rem; color: #212529;">
+                            <strong>Confidence Score:</strong> <span class="badge badge-primary">{avg_conf*100:.2f}%</span>
+                        </div>
+                        <p style="font-size: 0.9rem; color: #868E96; margin-top: 8px;">Analyzed across {len(predictions)} scans to ensure accuracy.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
-                    if st.button("💾 Save Results to Cloud", key="save_cancer"):
-                        with st.spinner("Saving to cloud..."):
+                    save_key = f"saved_{'_'.join([f.name for f in uploaded_files])}"
+                    if not st.session_state.get(save_key):
+                        with st.spinner("💾 Saving detection results automatically..."):
                             try:
                                 # Upload first image as reference
-                                img_url, _ = fb.upload_medical_scan(st.session_state.user['localId'], uploaded_files[0], uploaded_files[0].name)
+                                uploaded_files[0].seek(0)
+                                img_url, _ = aw.upload_medical_scan(st.session_state.user['localId'], uploaded_files[0], uploaded_files[0].name)
                                 
                                 data = {
                                     "type": "Cancer Detection",
@@ -169,10 +268,11 @@ else:
                                     "image_url": img_url,
                                     "scan_count": len(uploaded_files)
                                 }
-                                fb.save_diagnosis(st.session_state.user['localId'], data)
-                                st.success("✅ Diagnosis saved to your history!")
+                                aw.save_diagnosis(st.session_state.user['localId'], data)
+                                st.session_state[save_key] = True
+                                st.success("✅ Diagnosis saved automatically to history!")
                             except Exception as e:
-                                st.error(f"Failed to save: {e}")
+                                st.error(f"Failed to auto-save: {e}")
 
     with tab2:
         st.header("Predict Disease from Symptoms/Notes")
@@ -191,7 +291,7 @@ else:
                     try:
                         with st.spinner("🔍 Extracting text..."):
                             img_ocr = Image.open(note_image)
-                            st.image(img_ocr, caption="Uploaded Note", use_column_width=True)
+                            st.image(img_ocr, caption="Uploaded Note", use_container_width=True)
                             extracted_text = pytesseract.image_to_string(img_ocr)
                             st.success("Text extracted successfully!")
                     except Exception as e:
@@ -209,8 +309,15 @@ else:
                         try:
                             disease, conf = predict_disease_from_text(user_input)
                             st.divider()
-                            st.success(f"## 🩺 Predicted Condition: {disease}")
-                            st.write(f"**Confidence:** {conf*100:.2f}%")
+                            st.markdown(f"""
+                            <div class="card">
+                                <div style="font-size: 0.9rem; color: #6C757D; text-transform: uppercase; font-weight: bold;">NLP Analysis Result</div>
+                                <h2 style="color: #00A699; margin-top: 8px;">🩺 {disease}</h2>
+                                <div style="font-size: 1.1rem; color: #212529;">
+                                    <strong>Confidence Score:</strong> <span class="badge badge-primary">{conf*100:.2f}%</span>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
                             
                             # Cache prediction for saving
                             st.session_state.last_text_pred = {
@@ -226,11 +333,18 @@ else:
                 if 'last_text_pred' in st.session_state:
                     if st.button("💾 Save to History", key="save_text"):
                         try:
-                            data = st.session_state.last_text_pred
-                            data['type'] = "Symptom Analysis"
-                            fb.save_diagnosis(st.session_state.user['localId'], data)
-                            st.success("✅ Saved to history!")
-                            del st.session_state.last_text_pred
+                            with st.spinner("Saving to cloud..."):
+                                data = st.session_state.last_text_pred
+                                data['type'] = "Symptom Analysis"
+                                
+                                if note_image:
+                                    note_image.seek(0)
+                                    img_url, _ = aw.upload_medical_scan(st.session_state.user['localId'], note_image, note_image.name)
+                                    data['image_url'] = img_url
+
+                                aw.save_diagnosis(st.session_state.user['localId'], data)
+                                st.success("✅ Saved to history!")
+                                del st.session_state.last_text_pred
                         except Exception as e:
                             st.error(f"Save failed: {e}")
 
@@ -241,26 +355,110 @@ else:
         
         with st.spinner("Fetching your records..."):
             try:
-                history = fb.get_diagnosis_history(st.session_state.user['localId'])
+                history = aw.get_diagnosis_history(st.session_state.user['localId'])
                 
                 if not history:
                     st.info("No records found yet. Perform a diagnosis to see it here.")
                 else:
                     for entry in history:
-                        with st.expander(f"📅 {entry['timestamp'].strftime('%Y-%m-%d %H:%M')} | {entry['type']} - {entry['diagnosis']}"):
+                        card_html = f"""
+                        <div class="card" style="margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                <span style="font-weight: 600; color: #495057;">📅 {entry['timestamp'].strftime('%Y-%m-%d %H:%M')}</span>
+                                <span class="badge badge-primary">{entry['type']}</span>
+                            </div>
+                            <h3 style="color: #0068C9; margin-top: 0; margin-bottom: 10px;">{entry['diagnosis']}</h3>
+                            <div style="color: #495057;">
+                                <strong>Confidence:</strong> <span style="color: #212529; font-weight: bold;">{entry['confidence']*100:.2f}%</span>
+                            </div>
+                        """
+                        if 'notes' in entry:
+                            card_html += f'<div style="margin-top: 10px; padding: 10px; background-color: #F8F9FA; border-radius: 8px; font-size: 0.9rem;"><strong>Notes:</strong> {entry["notes"]}</div>'
+                        if 'scan_count' in entry:
+                            card_html += f'<div style="margin-top: 10px; font-size: 0.9rem;"><strong>Scans Analyzed:</strong> {entry["scan_count"]}</div>'
+                        
+                        card_html += f'<div style="margin-top: 15px; font-size: 0.8rem; color: #CED4DA;">ID: {entry.get("id", "N/A")}</div></div>'
+                        
+                        if 'image_url' in entry:
                             col_a, col_b = st.columns([1, 2])
                             with col_a:
-                                if 'image_url' in entry:
-                                    st.image(entry['image_url'], use_column_width=True)
-                                else:
-                                    st.info("No image associated.")
+                                st.image(entry['image_url'], use_container_width=True, caption="Reference Scan")
                             with col_b:
-                                st.write(f"**Diagnosis:** {entry['diagnosis']}")
-                                st.write(f"**Confidence:** {entry['confidence']*100:.2f}%")
-                                if 'notes' in entry:
-                                    st.write(f"**Notes:** {entry['notes']}")
-                                if 'scan_count' in entry:
-                                    st.write(f"**Scans Analyzed:** {entry['scan_count']}")
-                                st.caption(f"ID: {entry['id']}")
+                                st.markdown(card_html, unsafe_allow_html=True)
+                        else:
+                            st.markdown(card_html, unsafe_allow_html=True)
             except Exception as e:
                 st.error(f"Error fetching history: {e}")
+
+    if is_admin:
+        with tabs[3]:
+            st.header("🩺 Patient History")
+            all_users = aw.get_all_users()
+            user_options = {f"{u['email']} (ID: {u['userid']})": u['userid'] for u in all_users if u.get('role', 'user') == 'user'}
+            
+            selected_user_label = st.selectbox("Select Patient to View", list(user_options.keys()))
+            if selected_user_label:
+                selected_userid = user_options[selected_user_label]
+                st.divider()
+                st.subheader(f"Records for {selected_user_label.split(' ')[0]}")
+                
+                with st.spinner("Fetching patient records..."):
+                    try:
+                        p_history = aw.get_diagnosis_history(selected_userid)
+                        if not p_history:
+                            st.info("No records found for this patient.")
+                        else:
+                            for entry in p_history:
+                                card_html = f"""
+                                <div class="card" style="margin-bottom: 20px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                        <span style="font-weight: 600; color: #495057;">📅 {entry['timestamp'].strftime('%Y-%m-%d %H:%M')}</span>
+                                        <span class="badge badge-primary">{entry['type']}</span>
+                                    </div>
+                                    <h3 style="color: #0068C9; margin-top: 0; margin-bottom: 10px;">{entry['diagnosis']}</h3>
+                                    <div style="color: #495057;">
+                                        <strong>Confidence:</strong> <span style="color: #212529; font-weight: bold;">{entry['confidence']*100:.2f}%</span>
+                                    </div>
+                                """
+                                if 'notes' in entry:
+                                    card_html += f'<div style="margin-top: 10px; padding: 10px; background-color: #F8F9FA; border-radius: 8px; font-size: 0.9rem;"><strong>Notes:</strong> {entry["notes"]}</div>'
+                                if 'scan_count' in entry:
+                                    card_html += f'<div style="margin-top: 10px; font-size: 0.9rem;"><strong>Scans Analyzed:</strong> {entry["scan_count"]}</div>'
+                                card_html += f'<div style="margin-top: 15px; font-size: 0.8rem; color: #CED4DA;">ID: {entry.get("id", "N/A")}</div></div>'
+                                
+                                if 'image_url' in entry:
+                                    col_a, col_b = st.columns([1, 2])
+                                    with col_a:
+                                        st.image(entry['image_url'], use_container_width=True, caption="Reference Scan")
+                                    with col_b:
+                                        st.markdown(card_html, unsafe_allow_html=True)
+                                        if st.button("🗑️ Delete Record", key=f"del_{entry['id']}", type="primary"):
+                                            aw.delete_diagnosis(entry['id'])
+                                            st.rerun()
+                                else:
+                                    st.markdown(card_html, unsafe_allow_html=True)
+                                    if st.button("🗑️ Delete Record", key=f"del_noimg_{entry['id']}", type="primary"):
+                                        aw.delete_diagnosis(entry['id'])
+                                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error fetching history: {e}")
+
+        with tabs[4]:
+            st.header("👥 Manage Users")
+            st.markdown("Change roles below. Only admins can see this tab.")
+            st.divider()
+            
+            users = aw.get_all_users()
+            for u in users:
+                c1, c2, c3 = st.columns([3, 1.5, 1])
+                with c1:
+                    st.write(f"**{u['email']}**  \n`ID: {u['userid']}`")
+                with c2:
+                    current_role = u.get('role', 'user')
+                    new_role = st.selectbox("Role", ["user", "admin"], index=0 if current_role == 'user' else 1, key=f"role_{u['id']}", label_visibility="collapsed")
+                with c3:
+                    if new_role != current_role:
+                        if st.button("Update", key=f"btn_{u['id']}", use_container_width=True):
+                            aw.update_user_role(u['id'], new_role)
+                            st.success("Updated!")
+                st.divider()
