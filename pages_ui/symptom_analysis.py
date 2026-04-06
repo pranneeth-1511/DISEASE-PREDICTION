@@ -20,6 +20,16 @@ def predict_disease_from_text(text_input, res):
     return "Error", 0.0
 
 def show_symptom_analysis(res):
+    st.markdown("""
+    <style>
+        .block-container {
+            background: 
+                radial-gradient(circle at 10% 10%, rgba(0, 166, 153, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 90% 90%, rgba(0, 104, 201, 0.08) 0%, transparent 40%),
+                linear-gradient(135deg, #f0fdfa 0%, #f8fafc 100%) !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
     st.header("📝 Symptom & Clinical Note Analysis")
     st.markdown("Extract insights from medical notes using advanced NLP models.")
     
@@ -31,7 +41,6 @@ def show_symptom_analysis(res):
     main_col, side_col = st.columns([2, 1], gap="large")
     
     with main_col:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
         st.subheader("🔍 Input Data")
         
         tab_ocr, tab_manual = st.tabs(["📸 OCR Extraction", "⌨️ Manual Entry"])

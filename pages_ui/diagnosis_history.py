@@ -11,33 +11,61 @@ def show_diagnosis_history():
     # --- Enhanced CSS for Responsiveness ---
     st.markdown("""
     <style>
-        .history-card {
-            background-color: var(--background-color);
-            border: 1px solid var(--border-color, #e0e0e0);
-            padding: 1.5rem;
-            border-radius: 12px;
-            margin-bottom: 1rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        .block-container {
+            background: 
+                linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%),
+                repeating-linear-gradient(45deg, rgba(100, 116, 139, 0.01) 0px, rgba(100, 116, 139, 0.01) 1px, transparent 1px, transparent 10px) !important;
         }
-        .history-header {
+        
+        /* Table Header Styling */
+        .table-header {
+            background: #ffffff;
+            border-bottom: 2px solid var(--primary-color, #0068C9);
+            padding: 1rem 0.5rem;
+            margin-bottom: 0.5rem;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
         }
+
+        /* Table Row Styling */
+        .table-row {
+            background: #ffffff;
+            border-bottom: 1px solid #edf2f7;
+            padding: 1rem 0.5rem;
+            display: flex;
+            align-items: center;
+            transition: background 0.2s ease;
+        }
+        .table-row:hover {
+            background: #f8fafc;
+        }
+
         .badge {
-            padding: 4px 12px;
+            padding: 4px 10px;
             border-radius: 50px;
-            font-size: 0.8rem;
-            font-weight: 600;
+            font-size: 0.75rem;
+            font-weight: 700;
         }
         .badge-success { background-color: #dcfce7; color: #166534; }
         .badge-warning { background-color: #fef9c3; color: #854d0e; }
         
-        /* Mobile adjustment */
-        @media (max-width: 640px) {
-            .history-header { flex-direction: column; align-items: flex-start; }
+        .header-text {
+            font-weight: 700;
+            color: #4a5568;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+        
+        .row-text {
+            color: #2d3748;
+            font-size: 0.9rem;
+        }
+        
+        .notes-text {
+            font-size: 0.8rem;
+            color: #718096;
+            font-style: italic;
+            margin-top: 4px;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -55,7 +83,6 @@ def show_diagnosis_history():
 
     with st.spinner("Fetching your records..."):
         try:
-            # Assuming 'id' is the correct key for user identification
             history = aw.get_diagnosis_history(st.session_state.user['localId'])
             
             if not history:
@@ -67,54 +94,50 @@ def show_diagnosis_history():
                 </div>
                 """, unsafe_allow_html=True)
             else:
+                # Table Headers
+                th_cols = st.columns([1.8, 1.5, 2.5, 1.2, 1], gap="medium")
+                with th_cols[0]: st.markdown('<span class="header-text">📅 Datetime</span>', unsafe_allow_html=True)
+                with th_cols[1]: st.markdown('<span class="header-text">🧬 Category</span>', unsafe_allow_html=True)
+                with th_cols[2]: st.markdown('<span class="header-text">⚖️ Diagnosis</span>', unsafe_allow_html=True)
+                with th_cols[3]: st.markdown('<span class="header-text">📊 Conf.</span>', unsafe_allow_html=True)
+                with th_cols[4]: st.markdown('<span class="header-text">🔍 Action</span>', unsafe_allow_html=True)
+                
+                st.markdown('<hr style="margin: 0.5rem 0; border: none; border-top: 1px solid #edf2f7;">', unsafe_allow_html=True)
+
                 for index, entry in enumerate(history):
-                    # Data Preparation
                     conf_val = entry.get('confidence', 0) * 100
                     badge_class = "badge-success" if conf_val > 80 else "badge-warning"
                     timestamp = entry['timestamp'].strftime('%b %d, %Y • %H:%M')
                     
-                    # Main Card Container
-                    with st.container():
-                        st.markdown(f"""
-                        <div class="history-card">
-                            <div class="history-header">
-                                <div>
-                                    <span style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">{entry.get('type', 'General')}</span>
-                                    <h3 style="margin: 0; color: var(--primary-color);">{entry.get('diagnosis', 'Unknown')}</h3>
-                                    <p style="margin: 0; font-size: 0.85rem; color: #64748b;">📅 {timestamp}</p>
-                                </div>
-                                <span class="badge {badge_class}">{conf_val:.1f}% Confidence</span>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                    row_cols = st.columns([1.8, 1.5, 2.5, 1.2, 1], gap="medium")
+                    
+                    with row_cols[0]: 
+                        st.markdown(f'<span class="row-text">{timestamp}</span>', unsafe_allow_html=True)
+                    
+                    with row_cols[1]:
+                        st.markdown(f'<span class="badge badge-success" style="opacity: 0.8;">{entry.get("type", "General")}</span>', unsafe_allow_html=True)
+                    
+                    with row_cols[2]:
+                        st.markdown(f'**{entry.get("diagnosis", "Unknown")}**', unsafe_allow_html=True)
+                        if 'notes' in entry and entry['notes']:
+                            st.markdown(f'<div class="notes-text">📝 {entry["notes"][:60]}...</div>' if len(entry['notes']) > 60 else f'<div class="notes-text">📝 {entry["notes"]}</div>', unsafe_allow_html=True)
+                    
+                    with row_cols[3]:
+                        st.markdown(f'<span class="badge {badge_class}">{conf_val:.1f}%</span>', unsafe_allow_html=True)
+                    
+                    with row_cols[4]:
+                        view_image = st.button(f"🖼️ View Scan", key=f"btn_{index}", use_container_width=True)
+                    
+                    if view_image:
+                        if 'image_url' in entry and entry['image_url']:
+                            show_scan_modal(entry['image_url'], entry.get('diagnosis', 'Unknown'))
+                        else:
+                            st.warning("No visual evidence found.")
+                    
+                    st.markdown('<hr style="margin: 0.3rem 0; border: none; border-top: 1px solid #f7fafc;">', unsafe_allow_html=True)
 
-                        # Action Row (Notes and Image View)
-                        col_text, col_action = st.columns([3, 1])
-                        
-                        with col_text:
-                            if 'notes' in entry:
-                                st.info(f"**Clinical Notes:** {entry['notes']}")
-                        
-                        with col_action:
-                            # Unique key for every button in the loop
-                            view_image = st.button(f"🖼️ View Scan", key=f"btn_{index}", use_container_width=True)
-                        
-                        # Trigger Image Modal (Popup)
-                        if view_image:
-                            if 'image_url' in entry and entry['image_url']:
-                                show_scan_modal(entry['image_url'], entry.get('diagnosis', 'Unknown'))
-                            else:
-                                st.warning("No visual evidence found for this diagnostic record.")
-                        
-                        # Depth details and ID
-                        st.markdown(f"""
-                            <div style="display: flex; justify-content: space-between; margin-top: -10px; padding: 0 5px;">
-                                <small style="color: #94a3b8;">🔬 Scans: {entry.get('scan_count', 1)}</small>
-                                <small style="color: #cbd5e1; font-family: monospace;">ID: {entry.get('id', 'N/A')[:8]}...</small>
-                            </div>
-                        """, unsafe_allow_html=True)
-                        
-                        st.markdown("<br>", unsafe_allow_html=True)
+        except Exception as e:
+            st.error(f"Failed to load history: {e}")
 
         except Exception as e:
             st.error(f"Failed to load history: {e}")

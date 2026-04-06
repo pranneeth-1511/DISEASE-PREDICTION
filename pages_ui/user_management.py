@@ -2,6 +2,16 @@ import streamlit as st
 import appwrite_utils as aw
 
 def show_user_management():
+    st.markdown("""
+    <style>
+        .block-container {
+            background: 
+                radial-gradient(circle at 100% 0%, rgba(79, 70, 229, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 0% 100%, rgba(0, 104, 201, 0.06) 0%, transparent 50%),
+                linear-gradient(135deg, #f8fafc 0%, #f5f3ff 100%) !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
     st.header("👥 System User Directory")
     st.markdown("Monitor and adjust access levels for all registered healthcare professionals.")
     st.divider()

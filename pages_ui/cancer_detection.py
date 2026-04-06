@@ -18,6 +18,16 @@ def predict_cancer(image, res):
     return "Error", 0.0
 
 def show_cancer_detection(res):
+    st.markdown("""
+    <style>
+        .block-container {
+            background: 
+                radial-gradient(circle at 15% 15%, rgba(0, 104, 201, 0.08) 0%, transparent 45%),
+                radial-gradient(circle at 85% 85%, rgba(0, 166, 153, 0.08) 0%, transparent 45%),
+                linear-gradient(135deg, #f8fafc 0%, #eef2f7 100%) !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
     st.header("🧬 Multi-Cancer Diagnostic Dashboard")
     st.markdown("Upload medical scans for high-precision AI analysis.")
     

@@ -50,8 +50,44 @@ st.markdown("""
         height: auto !important;
     }
     
-    /* Hide Streamlit elements gracefully */
-    header[data-testid="stHeader"], footer {
+    /* Clean header while maintaining clinical aesthetic and essential toggle */
+    header[data-testid="stHeader"] {
+        background: transparent !important;
+        border-bottom: none !important;
+        z-index: 99 !important;
+    }
+    
+    /* Hide non-essential header clutter (Deploy button, Hamburger menu, etc.) */
+    [data-testid="stAppDeployButton"], 
+    [data-testid="stHeaderActionElements"],
+    #MainMenu {
+        display: none !important;
+        visibility: hidden !important;
+    }
+    
+    /* Ensure the sidebar collapse button is visible, accessible, and premium-styled */
+    [data-testid="stSidebarCollapseButton"] {
+        visibility: visible !important;
+        display: flex !important;
+        background: rgba(255, 255, 255, 0.95) !important;
+        border: 1px solid rgba(0, 104, 201, 0.1) !important;
+        border-radius: 50% !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+        color: var(--primary) !important;
+        margin-left: 1rem !important;
+        margin-top: 1rem !important;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        z-index: 101 !important;
+    }
+    
+    [data-testid="stSidebarCollapseButton"]:hover {
+        transform: scale(1.1) !important;
+        background: white !important;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12) !important;
+        color: var(--secondary) !important;
+    }
+    
+    footer {
         visibility: hidden !important;
         display: none !important;
     }
